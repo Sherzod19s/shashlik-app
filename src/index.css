@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    @apply bg-bg text-ink font-sans antialiased;
+    overscroll-behavior-y: contain;
+  }
+  body {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+    min-height: 100dvh;
+  }
+  input, select, textarea {
+    font-size: 16px; /* prevent iOS zoom */
+  }
+  /* Remove number input spinners on mobile */
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type=number] { -moz-appearance: textfield; }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-lg
+           font-semibold text-[15px] cursor-pointer transition-colors
+           bg-ember text-white hover:bg-ember-dark active:scale-[0.98];
+  }
+  .btn-secondary {
+    @apply bg-surface2 text-ink border border-border hover:bg-border;
+  }
+  .btn-danger {
+    @apply bg-danger hover:bg-danger/90;
+  }
+  .btn-ghost {
+    @apply bg-transparent text-ember hover:bg-ember-light;
+  }
+  .btn-sm {
+    @apply px-3 py-2 text-[13px];
+  }
+  .card {
+    @apply bg-surface rounded-xl border border-border p-4 mb-3;
+  }
+  .input {
+    @apply w-full px-3 py-3 bg-surface border border-border-strong rounded-lg
+           text-base text-ink focus:outline-none focus:border-ember;
+  }
+  .label {
+    @apply block text-[13px] font-semibold mb-1.5 text-ink-2;
+  }
+  .badge {
+    @apply inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold
+           uppercase tracking-wide;
+  }
+  .chip {
+    @apply px-3 py-1.5 bg-surface border border-border rounded-full
+           text-[13px] cursor-pointer whitespace-nowrap text-ink-2 font-medium;
+  }
+  .chip-active {
+    @apply bg-ember border-ember text-white;
+  }
+}
+
+@layer utilities {
+  .num { font-variant-numeric: tabular-nums; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+  .scrollbar-none { scrollbar-width: none; }
+}
