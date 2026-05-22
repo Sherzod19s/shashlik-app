@@ -41,6 +41,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 gap-2.5 mb-3">
           <QuickButton icon="📝" label="Новый заказ" onClick={() => navigate('/orders/new')} />
           <QuickButton icon="🥩" label="Закупка мяса" onClick={() => navigate('/purchases/new')} />
+          <QuickButton icon="📊" label="Аналитика" onClick={() => navigate('/analytics')} />
           <QuickButton icon="👥" label="Клиенты" onClick={() => navigate('/customers')} />
           <QuickButton icon="⚙️" label="Настройки" onClick={() => navigate('/settings')} />
         </div>

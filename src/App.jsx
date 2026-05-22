@@ -14,6 +14,7 @@ import Purchases from './pages/Purchases.jsx';
 import PurchaseForm from './pages/PurchaseForm.jsx';
 import PurchaseDetail from './pages/PurchaseDetail.jsx';
 import Products from './pages/Products.jsx';
+import Analytics from './pages/Analytics.jsx';
 import Settings from './pages/Settings.jsx';
 
 export default function App() {
@@ -36,6 +37,7 @@ export default function App() {
             <Route path="purchases/:id" element={<PurchaseDetail />} />
             <Route path="purchases/:id/edit" element={<PurchaseForm />} />
             <Route path="products" element={<Products />} />
+            <Route path="analytics" element={<Analytics />} />
             <Route path="settings" element={<Settings />} />
             <Route path="*" element={<Dashboard />} />
           </Route>
