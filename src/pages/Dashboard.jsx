@@ -1,6 +1,7 @@
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDB } from '../lib/store.js';
-import { dashboardStats, fmt, fmtDateShort, plural, orderStatusBadge } from '../lib/utils.js';
+import { dashboardStats, fmt, fmtDateShort, plural, orderStatusBadge, today } from '../lib/utils.js';
 import { Header } from '../components/Layout.jsx';
 import { Stat, Badge } from '../components/ui.jsx';
 
@@ -10,6 +11,35 @@ export default function Dashboard() {
   const s = dashboardStats(db);
   const recent = [...db.orders].sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 5);
   const profitSign = s.profit >= 0 ? '+' : '';
+
+  // Group upcoming/overdue deliveries
+  const deliveries = useMemo(() => {
+    const todayStr = today();
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+
+    const overdue = [];
+    const todayList = [];
+    const tomorrowList = [];
+
+    db.orders.forEach((o) => {
+      if (o.status === 'paid') return;
+      if (!o.deliveryDate) return;
+      if (o.deliveryDate < todayStr) {
+        if (o.status === 'pending') overdue.push(o);
+      } else if (o.deliveryDate === todayStr) {
+        todayList.push(o);
+      } else if (o.deliveryDate === tomorrowStr) {
+        tomorrowList.push(o);
+      }
+    });
+
+    overdue.sort((a, b) => (a.deliveryDate || '').localeCompare(b.deliveryDate || ''));
+    return { overdue, today: todayList, tomorrow: tomorrowList };
+  }, [db.orders]);
+
+  const totalUpcoming = deliveries.overdue.length + deliveries.today.length + deliveries.tomorrow.length;
 
   return (
     <>
@@ -28,6 +58,27 @@ export default function Dashboard() {
             Доход {fmt(s.revenue)} − Расход {fmt(s.costs)}
           </div>
         </div>
+
+        {/* Today's deliveries — show only if there's something */}
+        {totalUpcoming > 0 && (
+          <>
+            <div className="flex justify-between items-center mt-5 mb-2">
+              <div className="text-base font-bold">Доставки</div>
+              <div className="text-ink-3 text-sm">{totalUpcoming}</div>
+            </div>
+            <div className="flex flex-col gap-2 mb-3">
+              {deliveries.overdue.map((o) => (
+                <DeliveryItem key={o.id} order={o} db={db} tone="overdue" onClick={() => navigate(`/orders/${o.id}`)} />
+              ))}
+              {deliveries.today.map((o) => (
+                <DeliveryItem key={o.id} order={o} db={db} tone="today" onClick={() => navigate(`/orders/${o.id}`)} />
+              ))}
+              {deliveries.tomorrow.map((o) => (
+                <DeliveryItem key={o.id} order={o} db={db} tone="tomorrow" onClick={() => navigate(`/orders/${o.id}`)} />
+              ))}
+            </div>
+          </>
+        )}
 
         {/* Stats grid */}
         <div className="grid grid-cols-2 gap-2.5 mb-3">
@@ -69,6 +120,36 @@ export default function Dashboard() {
         )}
       </div>
     </>
+  );
+}
+
+function DeliveryItem({ order, db, tone, onClick }) {
+  const customer = db.customers.find((c) => c.id === order.customerId);
+  const tones = {
+    overdue: { label: `Просрочено (${fmtDateShort(order.deliveryDate)})`, cls: 'bg-danger/10 text-danger border-danger/30' },
+    today: { label: 'Сегодня', cls: 'bg-ember-light text-ember border-ember/30' },
+    tomorrow: { label: 'Завтра', cls: 'bg-warn-light text-warn border-warn/30' },
+  };
+  const t = tones[tone];
+  return (
+    <div
+      onClick={onClick}
+      className={`rounded-xl border p-3.5 cursor-pointer active:opacity-80 flex justify-between items-center gap-2 ${t.cls}`}
+    >
+      <div className="flex-1 min-w-0">
+        <div className="text-[11px] font-semibold uppercase tracking-wider mb-0.5">{t.label}</div>
+        <div className="font-semibold text-[15px] truncate text-ink">
+          {customer ? customer.name : 'Удалённый клиент'}
+        </div>
+        <div className="text-[13px] text-ink-2">
+          {(order.items || []).length}{' '}
+          {plural((order.items || []).length, 'позиция', 'позиции', 'позиций')}
+        </div>
+      </div>
+      <div className="text-right">
+        <div className="font-bold text-[15px] num text-ink">{fmt(order.total)}</div>
+      </div>
+    </div>
   );
 }
 

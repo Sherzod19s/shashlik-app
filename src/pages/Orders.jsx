@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDB, findById } from '../lib/store.js';
 import { fmt, fmtDateShort, plural, orderStatusBadge } from '../lib/utils.js';
@@ -9,8 +9,13 @@ export default function Orders() {
   const db = useDB();
   const navigate = useNavigate();
   const [filter, setFilter] = useState('all');
+  const [query, setQuery] = useState('');
 
-  const all = [...db.orders].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const all = useMemo(
+    () => [...db.orders].sort((a, b) => (b.date || '').localeCompare(a.date || '')),
+    [db.orders]
+  );
+
   const counts = {
     all: all.length,
     pending: all.filter((o) => o.status === 'pending').length,
@@ -18,11 +23,28 @@ export default function Orders() {
     paid: all.filter((o) => o.status === 'paid' || (Number(o.total) || 0) - (Number(o.paid) || 0) <= 0.001).length,
   };
 
-  const filtered =
+  const byFilter =
     filter === 'pending' ? all.filter((o) => o.status === 'pending')
     : filter === 'unpaid' ? all.filter((o) => (Number(o.total) || 0) - (Number(o.paid) || 0) > 0.001)
     : filter === 'paid' ? all.filter((o) => o.status === 'paid' || (Number(o.total) || 0) - (Number(o.paid) || 0) <= 0.001)
     : all;
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return byFilter;
+    return byFilter.filter((o) => {
+      const customer = findById(db.customers, o.customerId);
+      const customerName = (customer?.name || '').toLowerCase();
+      if (customerName.includes(q)) return true;
+      // Search item names
+      if ((o.items || []).some((it) => (it.name || '').toLowerCase().includes(q))) return true;
+      // Search date
+      if ((o.date || '').includes(q)) return true;
+      // Search note
+      if ((o.note || '').toLowerCase().includes(q)) return true;
+      return false;
+    });
+  }, [byFilter, query, db.customers]);
 
   const filterLabels = { all: 'Все', pending: 'В ожидании', unpaid: 'Не оплачены', paid: 'Оплачены' };
 
@@ -30,6 +52,24 @@ export default function Orders() {
     <>
       <Header title="Заказы" subtitle={`Всего: ${all.length}`} />
       <div className="p-4">
+        {/* Search */}
+        <div className="relative mb-3">
+          <input
+            type="search"
+            className="input pr-9"
+            placeholder="Поиск: клиент, товар, дата..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          {query && (
+            <button
+              onClick={() => setQuery('')}
+              aria-label="Очистить"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center text-ink-3 text-xl bg-transparent border-none cursor-pointer leading-none"
+            >×</button>
+          )}
+        </div>
+
         <div className="flex gap-1.5 mb-3 overflow-x-auto scrollbar-none pb-1">
           {['all', 'pending', 'unpaid', 'paid'].map((f) => (
             <button
@@ -43,38 +83,53 @@ export default function Orders() {
         </div>
 
         {filtered.length === 0 ? (
-          <Empty
-            icon="📋"
-            title={filter === 'all' ? 'Заказов пока нет' : 'Нет заказов в этой категории'}
-            desc={filter === 'all' ? 'Создайте первый заказ' : null}
-          />
+          query.trim() ? (
+            <Empty
+              icon="🔍"
+              title="Ничего не найдено"
+              desc={`По запросу «${query}» ничего нет`}
+            />
+          ) : (
+            <Empty
+              icon="📋"
+              title={filter === 'all' ? 'Заказов пока нет' : 'Нет заказов в этой категории'}
+              desc={filter === 'all' ? 'Создайте первый заказ' : null}
+            />
+          )
         ) : (
-          <div className="flex flex-col gap-2">
-            {filtered.map((o) => {
-              const customer = findById(db.customers, o.customerId);
-              const badge = orderStatusBadge(o);
-              return (
-                <div
-                  key={o.id}
-                  onClick={() => navigate(`/orders/${o.id}`)}
-                  className="card mb-0 cursor-pointer active:bg-surface2 flex justify-between items-center gap-2"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-[15px] truncate">
-                      {customer ? customer.name : 'Удалённый клиент'}
+          <>
+            {query.trim() && (
+              <div className="text-xs text-ink-3 mb-2">
+                Найдено: {filtered.length}
+              </div>
+            )}
+            <div className="flex flex-col gap-2">
+              {filtered.map((o) => {
+                const customer = findById(db.customers, o.customerId);
+                const badge = orderStatusBadge(o);
+                return (
+                  <div
+                    key={o.id}
+                    onClick={() => navigate(`/orders/${o.id}`)}
+                    className="card mb-0 cursor-pointer active:bg-surface2 flex justify-between items-center gap-2"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-[15px] truncate">
+                        {customer ? customer.name : 'Удалённый клиент'}
+                      </div>
+                      <div className="text-[13px] text-ink-2">
+                        {(o.items || []).length} {plural((o.items || []).length, 'позиция', 'позиции', 'позиций')} • {fmtDateShort(o.date)}
+                      </div>
                     </div>
-                    <div className="text-[13px] text-ink-2">
-                      {(o.items || []).length} {plural((o.items || []).length, 'позиция', 'позиции', 'позиций')} • {fmtDateShort(o.date)}
+                    <div className="text-right">
+                      <div className="font-bold text-[15px] num">{fmt(o.total)}</div>
+                      <div className="mt-1"><Badge className={badge.cls}>{badge.label}</Badge></div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-bold text-[15px] num">{fmt(o.total)}</div>
-                    <div className="mt-1"><Badge className={badge.cls}>{badge.label}</Badge></div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
       <FAB onClick={() => navigate('/orders/new')} />

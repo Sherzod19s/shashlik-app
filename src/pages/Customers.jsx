@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDB, saveCustomer, deleteCustomer as deleteC, findById } from '../lib/store.js';
 import { customerBalance, fmt, plural, CTYPE_LABEL } from '../lib/utils.js';
@@ -9,51 +9,99 @@ export default function Customers() {
   const db = useDB();
   const navigate = useNavigate();
   const [editing, setEditing] = useState(null);
+  const [query, setQuery] = useState('');
 
-  const customers = db.customers
-    .map((c) => ({ ...c, balance: customerBalance(db, c.id) }))
-    .sort((a, b) => b.balance - a.balance || (a.name || '').localeCompare(b.name || '', 'ru'));
+  const customers = useMemo(
+    () =>
+      db.customers
+        .map((c) => ({ ...c, balance: customerBalance(db, c.id) }))
+        .sort((a, b) => b.balance - a.balance || (a.name || '').localeCompare(b.name || '', 'ru')),
+    [db.customers, db.orders]
+  );
   const totalAR = customers.reduce((s, c) => s + c.balance, 0);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return customers;
+    return customers.filter((c) => {
+      if ((c.name || '').toLowerCase().includes(q)) return true;
+      if ((c.phone || '').toLowerCase().includes(q)) return true;
+      if ((c.address || '').toLowerCase().includes(q)) return true;
+      if ((c.note || '').toLowerCase().includes(q)) return true;
+      if ((CTYPE_LABEL[c.type] || '').toLowerCase().includes(q)) return true;
+      return false;
+    });
+  }, [customers, query]);
 
   return (
     <>
       <Header title="Клиенты" subtitle={`${customers.length} ${plural(customers.length, 'клиент', 'клиента', 'клиентов')}`} />
       <div className="p-4">
+        {/* Search */}
         {customers.length > 0 && (
+          <div className="relative mb-3">
+            <input
+              type="search"
+              className="input pr-9"
+              placeholder="Поиск: имя, телефон, адрес..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            {query && (
+              <button
+                onClick={() => setQuery('')}
+                aria-label="Очистить"
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center text-ink-3 text-xl bg-transparent border-none cursor-pointer leading-none"
+              >×</button>
+            )}
+          </div>
+        )}
+
+        {customers.length > 0 && !query.trim() && (
           <div className="card">
             <div className="text-[13px] uppercase tracking-wider text-ink-2 mb-2 font-semibold">Общий долг клиентов</div>
             <div className={`text-2xl font-bold num ${totalAR > 0 ? 'text-danger' : ''}`}>{fmt(totalAR)}</div>
           </div>
         )}
-        {customers.length === 0 ? (
-          <Empty icon="👥" title="Клиентов пока нет" desc="Добавьте ресторан, частное лицо или мероприятие" />
+
+        {filtered.length === 0 ? (
+          query.trim() ? (
+            <Empty icon="🔍" title="Ничего не найдено" desc={`По запросу «${query}» ничего нет`} />
+          ) : (
+            <Empty icon="👥" title="Клиентов пока нет" desc="Добавьте ресторан, частное лицо или мероприятие" />
+          )
         ) : (
-          <div className="flex flex-col gap-2">
-            {customers.map((c) => (
-              <div
-                key={c.id}
-                onClick={() => navigate(`/customers/${c.id}`)}
-                className="card mb-0 cursor-pointer active:bg-surface2 flex justify-between items-center gap-2"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-[15px] truncate">{c.name}</div>
-                  <div className="text-[13px] text-ink-2 truncate">
-                    {CTYPE_LABEL[c.type] || ''} {c.phone && `• ${c.phone}`}
+          <>
+            {query.trim() && (
+              <div className="text-xs text-ink-3 mb-2">Найдено: {filtered.length}</div>
+            )}
+            <div className="flex flex-col gap-2">
+              {filtered.map((c) => (
+                <div
+                  key={c.id}
+                  onClick={() => navigate(`/customers/${c.id}`)}
+                  className="card mb-0 cursor-pointer active:bg-surface2 flex justify-between items-center gap-2"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-[15px] truncate">{c.name}</div>
+                    <div className="text-[13px] text-ink-2 truncate">
+                      {CTYPE_LABEL[c.type] || ''} {c.phone && `• ${c.phone}`}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    {c.balance > 0 ? (
+                      <>
+                        <div className="font-bold text-[15px] num text-danger">{fmt(c.balance)}</div>
+                        <div className="text-xs text-ink-3">долг</div>
+                      </>
+                    ) : (
+                      <div className="text-xs text-ink-3">нет долга</div>
+                    )}
                   </div>
                 </div>
-                <div className="text-right">
-                  {c.balance > 0 ? (
-                    <>
-                      <div className="font-bold text-[15px] num text-danger">{fmt(c.balance)}</div>
-                      <div className="text-xs text-ink-3">долг</div>
-                    </>
-                  ) : (
-                    <div className="text-xs text-ink-3">нет долга</div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
       <FAB onClick={() => setEditing('new')} />
