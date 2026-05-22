@@ -1,5 +1,5 @@
 // Service Worker for Шашлык — Учёт бизнеса
-const CACHE_NAME = 'shashlik-v1';
+const CACHE_NAME = 'shashlik-v2';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
