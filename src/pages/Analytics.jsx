@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useDB } from '../lib/store.js';
-import { fmt, fmtPlain, UNITS, plural } from '../lib/utils.js';
+import { fmt, fmtQty, UNITS, plural } from '../lib/utils.js';
 import { Header } from '../components/Layout.jsx';
 import { Empty } from '../components/ui.jsx';
 
@@ -17,7 +17,6 @@ function getRangeStart(range) {
 }
 
 function buildBuckets(range, orders, purchases) {
-  // ---- All-time: monthly buckets from earliest data ----
   if (range === 'all') {
     let earliest = null;
     [...orders, ...purchases].forEach((x) => {
@@ -56,7 +55,6 @@ function buildBuckets(range, orders, purchases) {
     return buckets;
   }
 
-  // ---- Week/Month: daily buckets ----
   const days = range === 'week' ? 7 : 30;
   const start = getRangeStart(range);
   const buckets = [];
@@ -99,7 +97,6 @@ export default function Analytics() {
     const ordersInRange = db.orders.filter((o) => inRange(o.date));
     const purchasesInRange = db.purchases.filter((p) => inRange(p.date));
 
-    // Products by qty
     const productMap = new Map();
     let totalRevenue = 0;
     ordersInRange.forEach((o) => {
@@ -123,7 +120,6 @@ export default function Analytics() {
     const products = Array.from(productMap.values()).sort((a, b) => b.qty - a.qty);
     const maxProductQty = products[0]?.qty || 0;
 
-    // Customers by revenue (top 10)
     const customerMap = new Map();
     ordersInRange.forEach((o) => {
       const key = o.customerId || '__unknown__';
@@ -168,7 +164,6 @@ export default function Analytics() {
     <>
       <Header title="Аналитика" back />
       <div className="p-4">
-        {/* Range chips */}
         <div className="flex gap-1.5 mb-4 overflow-x-auto scrollbar-none pb-1">
           {['week', 'month', 'all'].map((r) => (
             <button
@@ -189,7 +184,6 @@ export default function Analytics() {
           />
         ) : (
           <>
-            {/* Summary cards */}
             <div className="grid grid-cols-3 gap-2.5 mb-4">
               <SummaryCard label="Заказов" value={data.orderCount} />
               <SummaryCard label="Доход" value={fmt(data.totalRevenue)} small />
@@ -201,7 +195,6 @@ export default function Analytics() {
               />
             </div>
 
-            {/* Revenue trend */}
             {data.buckets.length > 0 && (
               <>
                 <div className="text-base font-bold mb-2">Динамика дохода</div>
@@ -211,13 +204,11 @@ export default function Analytics() {
               </>
             )}
 
-            {/* Income vs Expense */}
             <div className="text-base font-bold mb-2 mt-2">Доход и расход</div>
             <div className="card">
               <CashFlow revenue={data.totalRevenue} expense={data.totalExpense} profit={data.profit} />
             </div>
 
-            {/* Products */}
             <div className="text-base font-bold mb-2 mt-2">Продажи по товарам</div>
             {data.products.length === 0 ? (
               <div className="card text-center text-ink-2">Нет проданных товаров</div>
@@ -231,7 +222,7 @@ export default function Analytics() {
                         <div className="flex justify-between items-baseline mb-1.5 gap-2">
                           <div className="font-semibold text-sm truncate flex-1 min-w-0">{p.name}</div>
                           <div className="text-sm font-bold num whitespace-nowrap">
-                            {fmtPlain(p.qty)} {UNITS[p.unit] || ''}
+                            {fmtQty(p.qty, p.unit)} {UNITS[p.unit] || ''}
                           </div>
                         </div>
                         <div className="h-7 bg-surface2 rounded-md overflow-hidden">
@@ -253,7 +244,6 @@ export default function Analytics() {
               </div>
             )}
 
-            {/* Top customers */}
             <div className="text-base font-bold mb-2 mt-2">Топ клиентов</div>
             {data.customers.length === 0 ? (
               <div className="card text-center text-ink-2">Нет клиентов с заказами</div>

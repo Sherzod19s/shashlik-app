@@ -9,6 +9,16 @@ export const fmtPlain = (n) => {
   return v.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
+// Quantity formatter — integer for pieces, 2 decimals for kg
+export const fmtQty = (n, unit) => {
+  const v = Number(n) || 0;
+  if (unit === 'pc') {
+    if (v % 1 === 0) return String(Math.round(v));
+    return v.toLocaleString('ru-RU', { maximumFractionDigits: 2 });
+  }
+  return v.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
 export const fmtDate = (s) => {
   if (!s) return '—';
   const d = new Date(s);
@@ -88,12 +98,14 @@ export const purchaseStatusBadge = (p) => {
 };
 
 // ====== DEMO DATA ======
+// Products sold per piece (шт) — typical Tajikistan shashlik pricing
+// Raw meat purchases stay in kg (that's how butchers sell)
 export const buildDemoData = () => {
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  const p1 = { id: uid(), name: 'Шашлык из баранины', price: 120, unit: 'kg', note: 'Маринад с луком и специями' };
-  const p2 = { id: uid(), name: 'Шашлык из говядины', price: 100, unit: 'kg', note: '' };
-  const p3 = { id: uid(), name: 'Шашлык из курицы', price: 75, unit: 'kg', note: '' };
-  const p4 = { id: uid(), name: 'Люля-кебаб', price: 90, unit: 'kg', note: '' };
+  const p1 = { id: uid(), name: 'Шашлык из баранины', price: 25, unit: 'pc', note: 'Маринад с луком и специями' };
+  const p2 = { id: uid(), name: 'Шашлык из говядины', price: 20, unit: 'pc', note: '' };
+  const p3 = { id: uid(), name: 'Шашлык из курицы', price: 15, unit: 'pc', note: '' };
+  const p4 = { id: uid(), name: 'Люля-кебаб', price: 20, unit: 'pc', note: '' };
 
   const c1 = { id: uid(), name: 'Ресторан "Чайхона №1"', type: 'restaurant', phone: '+992 90 123 45 67', address: 'Душанбе, ул. Рудаки 25', note: '' };
   const c2 = { id: uid(), name: 'Кафе "Восток"', type: 'restaurant', phone: '+992 91 234 56 78', address: '', note: '' };
@@ -124,20 +136,20 @@ export const buildDemoData = () => {
     suppliers: [s1, s2],
     orders: [
       mkOrder(c1, [
-        { productId: p1.id, name: p1.name, unit: 'kg', qty: 5, price: 120 },
-        { productId: p3.id, name: p3.name, unit: 'kg', qty: 3, price: 75 },
-      ], 'paid', 5 * 120 + 3 * 75, 8),
+        { productId: p1.id, name: p1.name, unit: 'pc', qty: 30, price: 25 },
+        { productId: p3.id, name: p3.name, unit: 'pc', qty: 20, price: 15 },
+      ], 'paid', 30 * 25 + 20 * 15, 8), // 1050
       mkOrder(c2, [
-        { productId: p1.id, name: p1.name, unit: 'kg', qty: 4, price: 120 },
-      ], 'delivered', 200, 4),
+        { productId: p1.id, name: p1.name, unit: 'pc', qty: 25, price: 25 },
+      ], 'delivered', 200, 4), // 625, partially paid
       mkOrder(c3, [
-        { productId: p1.id, name: p1.name, unit: 'kg', qty: 15, price: 120 },
-        { productId: p2.id, name: p2.name, unit: 'kg', qty: 10, price: 100 },
-        { productId: p4.id, name: p4.name, unit: 'kg', qty: 8, price: 90 },
-      ], 'pending', 1000, 1),
+        { productId: p1.id, name: p1.name, unit: 'pc', qty: 80, price: 25 },
+        { productId: p2.id, name: p2.name, unit: 'pc', qty: 60, price: 20 },
+        { productId: p4.id, name: p4.name, unit: 'pc', qty: 40, price: 20 },
+      ], 'pending', 1000, 1), // 4000
       mkOrder(c4, [
-        { productId: p3.id, name: p3.name, unit: 'kg', qty: 2, price: 75 },
-      ], 'pending', 0, 0),
+        { productId: p3.id, name: p3.name, unit: 'pc', qty: 15, price: 15 },
+      ], 'pending', 0, 0), // 225
     ],
     purchases: [
       {

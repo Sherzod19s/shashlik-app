@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useDB, findById, recordOrderPayment, markOrderDelivered, deleteOrder as deleteO } from '../lib/store.js';
-import { fmt, fmtPlain, fmtDate, orderStatusBadge, num, UNITS } from '../lib/utils.js';
+import { fmt, fmtPlain, fmtQty, fmtDate, orderStatusBadge, num, UNITS } from '../lib/utils.js';
 import { Header } from '../components/Layout.jsx';
 import { Badge, DetailRow, useToast, useConfirm } from '../components/ui.jsx';
 
@@ -68,7 +68,7 @@ export default function OrderDetail() {
               <div>
                 <div className="font-medium">{it.name}</div>
                 <div className="text-xs text-ink-2 num">
-                  {fmtPlain(it.qty)} {UNITS[it.unit] || ''} × {fmtPlain(it.price)} смн
+                  {fmtQty(it.qty, it.unit)} {UNITS[it.unit] || ''} × {fmtPlain(it.price)} смн
                 </div>
               </div>
               <div className="font-semibold text-sm num">{fmt(it.qty * it.price)}</div>
